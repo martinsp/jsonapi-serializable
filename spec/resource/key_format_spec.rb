@@ -8,14 +8,17 @@ describe JSONAPI::Serializable::Resource do
     end
   end
 
-  let(:object)   { User.new }
+  let(:object) do
+    User.new(posts: [Post.new(id: 1)])
+  end
+
   let(:resource) { klass.new(object: object) }
 
   subject { resource.as_jsonapi }
 
   context 'when keys are formatted' do
     let(:resource) do
-      klass.new(object: object)
+      klass.new(object: object, _class: { Post: SerializablePost })
     end
 
     before do
@@ -49,9 +52,48 @@ describe JSONAPI::Serializable::Resource do
           meta: { included: false }
         }
       }
-
     }
+
     it { is_expected.to eq(expected) }
+
+    context 'when fields are specified' do
+      subject { resource.as_jsonapi(fields: [:name, :address, :posts, :author, :comments, :review]) }
+      it { is_expected.to eq(expected) }
+    end
+
+    context 'when fields are specified with transformed keys' do
+      subject { resource.as_jsonapi(fields: [:Name, :Address, :Posts, :Author, :Comments, :Review]) }
+      it { is_expected.to eq(expected) }
+    end
+
+    context 'whith included relationships' do
+      expected_with_relationships = {
+        type: :foo,
+        id: 'bar',
+        attributes: { Name: nil, Address: nil },
+        relationships: {
+          Posts: {
+            data: [
+              {
+                id: '1',
+                type: :posts
+              }
+            ]
+          },
+          Author: {
+            meta: { included: false }
+          },
+          Comments: {
+            meta: { included: false }
+          },
+          Review: {
+            meta: { included: false }
+          }
+        }
+      }
+      subject { resource.as_jsonapi(include: [:posts]) }
+      it { is_expected.to eq(expected_with_relationships) }
+    end
 
     context 'when inheriting' do
       let(:subclass) { Class.new(klass) }

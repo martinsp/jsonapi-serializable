@@ -29,6 +29,7 @@ module JSONAPI
               attr_accessor :_key_formatter
             end
           end
+          klass.include InstanceMethods
         end
 
         def inherited(klass)
@@ -69,6 +70,26 @@ module JSONAPI
         alias has_many   relationship
         alias has_one    relationship
         alias belongs_to relationship
+
+        module InstanceMethods
+          def as_jsonapi(fields: nil, include: [])
+            super(fields: transform_keys(fields), include: transform_keys(include))
+          end
+
+          private
+
+          def transform_keys(keys)
+            return nil unless keys
+            keys.map do |name|
+              case name
+              when String, Symbol
+                self.class._key_formatter.call(name).to_sym
+              else
+                name
+              end
+            end
+          end
+        end
       end
     end
   end
